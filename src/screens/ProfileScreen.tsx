@@ -3,118 +3,194 @@
  * Responsabilidade: Exibir informações do usuário e navegação de retorno.
  */
 
-//IMPORTS
-
-// Imports: Tipagem para navegação (Stack)
-import { NativeStackNavigationProp } from '@react-navigation/native-stack';
-
-// Imports: React para componente funcional
 import React from 'react';
-
-// Imports: Botão estilizado pronto para uso
-import { Button } from 'react-native-elements';
-
-// Imports: Estilização com tema
 import styled from 'styled-components/native';
-
-// Imports: Cabeçalho padrão reutilizável
-import { HeaderContainer, HeaderTitle } from '../components/Header';
-
-// Imports: Tema visual padronizado
+import { Button } from 'react-native-elements';
+import { useAuth } from '../contexts/AuthContext';
+import { useNavigation } from '@react-navigation/native';
+import { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import { RootStackParamList } from '../types/navigation';
 import theme from '../styles/theme';
+import Header from '../components/Header';
+import { ViewStyle } from 'react-native';
 
-
-// ====== TIPAGEM DAS ROTAS ======
-type RootStackParamList = {
-    Home: undefined;
-    CreateAppointment: undefined;
-    Profile: undefined;
-};
-
-
-// ====== TIPAGEM DAS PROPS DA TELA ======
+// Tipagem para a prop de navegação
 type ProfileScreenProps = {
-    navigation: NativeStackNavigationProp<RootStackParamList, 'Profile'>;
+  navigation: NativeStackNavigationProp<RootStackParamList, 'Profile'>;
 };
 
-// ====== COMPONENTE PRINCIPAL ======
-const ProfileScreen: React.FC<ProfileScreenProps> = ({ navigation }) => {
-// Render: estrutura visual do componente
-    return (
-        <Container>
-            <HeaderContainer>
-                <HeaderTitle>Meu Perfil</HeaderTitle>
-            </HeaderContainer>
+const ProfileScreen: React.FC = () => {
+  // Obtém informações do usuário autenticado e função de logout
+  const { user, signOut } = useAuth();
+  // Hook de navegação tipado
+  const navigation = useNavigation<ProfileScreenProps['navigation']>();
 
-            <Content>
-                <Button
-                    title="Voltar"
-                    icon={{
-                        name: 'arrow-left',
-                        type: 'font-awesome',
-                        size: 20,
-                        color: 'white'
-                    }}
-                    buttonStyle={{
-                        backgroundColor: theme.colors.primary,
-                        borderRadius: 8,
-                        padding: 12,
-                        marginBottom: 20
-                    }}
-                    onPress={() => navigation.goBack()}
-                />
+  // Função auxiliar para traduzir o papel (role) do usuário
+  const getRoleText = (role: string) => {
+    switch (role) {
+      case 'admin':
+        return 'Administrador';
+      case 'doctor':
+        return 'Médico';
+      case 'patient':
+        return 'Paciente';
+      default:
+        return role;
+    }
+  };
 
-                <ProfileInfo>
-                    <Avatar source={{ uri: 'https://via.placeholder.com/150' }} />
-                    <Name>Nome do Usuário</Name>
-                    <Email>usuario@email.com</Email>
-                </ProfileInfo>
-            </Content>
-        </Container>
-    );
+  return (
+    <Container>
+      {/* Cabeçalho do app */}
+      <Header />
+
+      {/* Conteúdo principal com rolagem */}
+      <ScrollView contentContainerStyle={styles.scrollContent}>
+        <Title>Meu Perfil</Title>
+
+        {/* Card com informações do usuário */}
+        <ProfileCard>
+          {/* Avatar do usuário (imagem) */}
+          <Avatar source={{ uri: user?.image || 'https://via.placeholder.com/150' }} />
+          <Name>{user?.name}</Name>
+          <Email>{user?.email}</Email>
+
+          {/* Badge exibindo o papel do usuário */}
+          <RoleBadge role={user?.role || ''}>
+            <RoleText>{getRoleText(user?.role || '')}</RoleText>
+          </RoleBadge>
+          
+          {/* Exibe a especialidade apenas se o usuário for médico */}
+          {user?.role === 'doctor' && (
+            <SpecialtyText>Especialidade: {user?.specialty}</SpecialtyText>
+          )}
+        </ProfileCard>
+
+        {/* Botão para editar perfil */}
+        <Button
+          title="Editar Perfil"
+          onPress={() => navigation.navigate('EditProfile' as any)}
+          containerStyle={styles.button as ViewStyle}
+          buttonStyle={styles.editButton}
+        />
+
+        {/* Botão para voltar */}
+        <Button
+          title="Voltar"
+          onPress={() => navigation.goBack()}
+          containerStyle={styles.button as ViewStyle}
+          buttonStyle={styles.buttonStyle}
+        />
+
+        {/* Botão para logout */}
+        <Button
+          title="Sair"
+          onPress={signOut}
+          containerStyle={styles.button as ViewStyle}
+          buttonStyle={styles.logoutButton}
+        />
+      </ScrollView>
+    </Container>
+  );
 };
 
-// ====== ESTILOS (styled-components) ======
+// Estilos em objeto para botões e layout
+const styles = {
+  scrollContent: {
+    padding: 20,
+  },
+  button: {
+    marginBottom: 20,
+    width: '100%',
+  },
+  buttonStyle: {
+    backgroundColor: theme.colors.primary,
+    paddingVertical: 12,
+  },
+  editButton: {
+    backgroundColor: theme.colors.success,
+    paddingVertical: 12,
+  },
+  logoutButton: {
+    backgroundColor: theme.colors.error,
+    paddingVertical: 12,
+  },
+};
 
-// Estilo: Container
+// Componentes estilizados com styled-components
 const Container = styled.View`
   flex: 1;
   background-color: ${theme.colors.background};
 `;
 
-// Estilo: Conteúdo
-const Content = styled.View`
+const ScrollView = styled.ScrollView`
   flex: 1;
-  padding: ${theme.spacing.medium}px;
 `;
 
-// Estilo: Informações do perfil
-const ProfileInfo = styled.View`
+const Title = styled.Text`
+  font-size: 24px;
+  font-weight: bold;
+  color: ${theme.colors.text};
+  margin-bottom: 20px;
+  text-align: center;
+`;
+
+const ProfileCard = styled.View`
+  background-color: ${theme.colors.background};
+  border-radius: 8px;
+  padding: 20px;
+  margin-bottom: 20px;
   align-items: center;
-  margin-top: ${theme.spacing.large}px;
+  border-width: 1px;
+  border-color: ${theme.colors.border};
 `;
 
-// Estilo: Avatar
 const Avatar = styled.Image`
   width: 120px;
   height: 120px;
   border-radius: 60px;
-  margin-bottom: ${theme.spacing.medium}px;
+  margin-bottom: 16px;
 `;
 
-// Estilo: Nome
 const Name = styled.Text`
-  font-size: ${theme.typography.title.fontSize}px;
-  font-weight: ${theme.typography.title.fontWeight};
+  font-size: 20px;
+  font-weight: bold;
   color: ${theme.colors.text};
-  margin-bottom: ${theme.spacing.small}px;
+  margin-bottom: 8px;
 `;
 
-// Estilo: Email
 const Email = styled.Text`
-  font-size: ${theme.typography.body.fontSize}px;
+  font-size: 16px;
   color: ${theme.colors.text};
-  opacity: 0.8;
+  margin-bottom: 8px;
+`;
+
+const RoleBadge = styled.View<{ role: string }>`
+  background-color: ${(props: { role: string }) => {
+    switch (props.role) {
+      case 'admin':
+        return theme.colors.primary + '20';
+      case 'doctor':
+        return theme.colors.success + '20';
+      default:
+        return theme.colors.secondary + '20';
+    }
+  }};
+  padding: 4px 12px;
+  border-radius: 4px;
+  margin-bottom: 8px;
+`;
+
+const RoleText = styled.Text`
+  color: ${theme.colors.text};
+  font-size: 14px;
+  font-weight: 500;
+`;
+
+const SpecialtyText = styled.Text`
+  font-size: 16px;
+  color: ${theme.colors.text};
+  margin-top: 8px;
 `;
 
 export default ProfileScreen;
